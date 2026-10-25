@@ -1,50 +1,85 @@
 # Resume Analyser & Classifier
 
-A complete NLP portfolio system for cleaning resume text, extracting skills, computing semantic fit against job descriptions, classifying match strength and persisting an auditable screening history.
+[![CI](https://github.com/rsswethaa/resume-analyser-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/rsswethaa/resume-analyser-classifier/actions/workflows/ci.yml)
 
-## Included
-- resume text cleaning and skill extraction
-- cosine similarity utilities
-- lazy S-BERT encoder using `sentence-transformers/all-MiniLM-L6-v2`
-- deterministic lexical fallback for lightweight CI/tests
-- hybrid semantic + skill-fit scoring
-- SQLite persistence for resumes, jobs, skills, matches and audit events
-- ER/data-flow diagrams
-- automated NLP and storage tests
-- CI
-- interface, deployment, privacy/fairness and model-card docs
-- full technical report
+A recruiter-facing NLP product for parsing PDF/DOCX/TXT resumes, extracting sections and skills, comparing multiple candidates with a real job description, and producing explainable section-aware rankings with an audit trail.
+
+## Product features
+- PDF, DOCX and TXT resume upload
+- multi-candidate comparison in one run
+- education, experience, skills, projects and certification section extraction
+- optional S-BERT semantic similarity using `all-MiniLM-L6-v2`
+- deterministic lexical fallback for CI/lightweight demos
+- matched and missing skills
+- job keyword gaps
+- section-aware semantic scores
+- experience evidence detection
+- explainable candidate ranking
+- recruiter dashboard
+- SQLite audit trail with encoder/model version
+- fairness/audit summary that explicitly reports scoring inputs
+- Docker packaging, health endpoint and automated tests
 
 ## Architecture
 ```mermaid
 flowchart LR
-  R[Resume text] --> P[Preprocessing]
-  J[Job description] --> P
-  P --> S[S-BERT / fallback encoder]
-  S --> E[Embeddings]
-  E --> C[Cosine similarity]
-  P --> K[Skill extraction]
-  C --> F[Hybrid fit score]
-  K --> F
-  F --> DB[(Audit database)]
-  DB --> H[Human recruiter review]
+  F[PDF / DOCX / TXT] --> P[Document parser]
+  P --> X[Section extraction]
+  J[Job description] --> S[Section-aware semantic engine]
+  X --> S
+  X --> K[Skill + keyword analysis]
+  S --> R[Explainable fit score]
+  K --> R
+  R --> D[Recruiter dashboard]
+  R --> DB[(SQLite audit store)]
 ```
 
-## Quick test
+## Run
 ```bash
-python -m unittest discover -s tests -v
-python demo.py
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
 ```
+Open `http://127.0.0.1:5000`.
 
-## Enable S-BERT
+### Enable S-BERT
 ```bash
 pip install -r requirements-ml.txt
 ```
+The model remains lazy-loaded; without it the same product uses a deterministic fallback.
 
-## Database
+### Docker
 ```bash
-python -c "from src.storage import init_db; init_db('resume_analyser.db', seed=True)"
+docker build -t resume-intelligence .
+docker run -p 5000:5000 resume-intelligence
+```
+
+## API
+- `POST /api/compare` — multipart job description + up to 10 resumes
+- `GET /api/audit` — model/version and aggregate scoring audit
+- `GET /health` — health check
+
+## What the dashboard explains
+For every candidate it shows overall score, classification, semantic similarity, skill coverage, matched skills, missing skills, keyword gaps, detected sections, experience evidence, section-level scores, encoder version and a plain-language ranking reason.
+
+## Structure
+```text
+app.py                 Flask recruiter product
+templates/, static/     dashboard UI
+src/document_parser.py  PDF/DOCX/TXT ingestion
+src/product_analyser.py section-aware NLP and ranking
+src/product_storage.py  audit persistence
+src/sbert_engine.py     optional Sentence-BERT
+src/analyser.py         core hybrid match logic
+database/               schema, seed and reporting SQL
+notebooks/              NLP exploration
+tests/                  core, storage and product tests
+docs/                   architecture, API, database, product, fairness/security, deployment and report
 ```
 
 ## Responsible use
-This project supports analysis experiments only. It must not autonomously reject applicants. Real hiring use requires validated job-related criteria, fairness testing, accessibility review, privacy controls, candidate notice/consent where required and human oversight.
+This project is screening/analysis decision support, not an autonomous hiring authority. Protected demographic attributes are intentionally excluded, but that alone does not establish fairness. Production use needs representative bias/outcome testing, accessible alternatives, privacy controls, human review and legal assessment.
+
+## Integrity note
+No hiring-performance or accuracy percentage is fabricated. The repository separates implemented functionality from future validation work.
