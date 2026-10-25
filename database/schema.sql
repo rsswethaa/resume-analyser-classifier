@@ -1,0 +1,62 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS resumes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_ref TEXT NOT NULL UNIQUE,
+  resume_text TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS job_descriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_ref TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description_text TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS resume_skills (
+  resume_id INTEGER NOT NULL,
+  skill_id INTEGER NOT NULL,
+  PRIMARY KEY(resume_id, skill_id),
+  FOREIGN KEY(resume_id) REFERENCES resumes(id) ON DELETE CASCADE,
+  FOREIGN KEY(skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS job_skills (
+  job_id INTEGER NOT NULL,
+  skill_id INTEGER NOT NULL,
+  PRIMARY KEY(job_id, skill_id),
+  FOREIGN KEY(job_id) REFERENCES job_descriptions(id) ON DELETE CASCADE,
+  FOREIGN KEY(skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS matches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resume_id INTEGER NOT NULL,
+  job_id INTEGER NOT NULL,
+  semantic_score REAL NOT NULL CHECK(semantic_score BETWEEN 0 AND 1),
+  skill_score REAL NOT NULL CHECK(skill_score BETWEEN 0 AND 1),
+  final_score REAL NOT NULL CHECK(final_score BETWEEN 0 AND 100),
+  classification TEXT NOT NULL,
+  encoder_version TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(resume_id) REFERENCES resumes(id) ON DELETE CASCADE,
+  FOREIGN KEY(job_id) REFERENCES job_descriptions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id INTEGER,
+  detail TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_matches_resume_job ON matches(resume_id, job_id);
